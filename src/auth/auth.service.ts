@@ -1,26 +1,47 @@
-import { Injectable } from '@nestjs/common';
-import { CreateAuthDto } from './dto/create-auth.dto';
-import { UpdateAuthDto } from './dto/update-auth.dto';
+import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { UsersService } from 'src/users/users.service';
+import * as bcrypt from 'bcrypt';
+import { LoginDTO } from './dto/login.dto';
+import { JwtService } from '@nestjs/jwt';
+
+import { User } from 'src/users/schemas/user.schema';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class AuthService {
-  create(createAuthDto: CreateAuthDto) {
-    return 'This action adds a new auth';
-  }
+  constructor(
+    private userService: UsersService,
+    private jwtService: JwtService,
+    private configService: ConfigService,
+  ) {}
 
-  findAll() {
-    return `This action returns all auth`;
-  }
+  async login(
+    loginDTO: LoginDTO,
+  ): Promise<{ accessToken: string } | { message: string }> {
+    const user = await this.userService.findOne(loginDTO);
+    const passwordMatched = await bcrypt.compare(
+      loginDTO.password,
+      user.password,
+    );
 
-  findOne(id: number) {
-    return `This action returns a #${id} auth`;
-  }
-
-  update(id: number, updateAuthDto: UpdateAuthDto) {
-    return `This action updates a #${id} auth`;
-  }
-
-  remove(id: number) {
-    return `This action removes a #${id} auth`;
+    if (passwordMatched) {
+      delete user.password;
+      const payload: PayloadType = { email: user.email, userId: user.id };
+      const artist = await this.artistsService.findArtist(user.id);
+      if (artist) {
+        payload.artistId = artist.id;
+      }
+      if (user.enable2FA && user.twoFASecret) {
+        return {
+          validate2FA: 'http://localhost:3000/auth/validate-2fa',
+          message: 'Please send the OTP from your Google Authenticator App',
+        };
+      }
+      return {
+        accessToken: this.jwtService.sign(payload),
+      };
+    } else {
+      throw new UnauthorizedException('Password does not match');
+    }
   }
 }
