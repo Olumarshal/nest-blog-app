@@ -4,8 +4,8 @@ import * as bcrypt from 'bcrypt';
 import { LoginDTO } from './dto/login.dto';
 import { JwtService } from '@nestjs/jwt';
 
-import { User } from 'src/users/schemas/user.schema';
 import { ConfigService } from '@nestjs/config';
+import { PayloadType, UserWithId } from './types';
 
 @Injectable()
 export class AuthService {
@@ -18,7 +18,7 @@ export class AuthService {
   async login(
     loginDTO: LoginDTO,
   ): Promise<{ accessToken: string } | { message: string }> {
-    const user = await this.userService.findOne(loginDTO);
+    const user = (await this.userService.findOne(loginDTO)) as UserWithId;
     const passwordMatched = await bcrypt.compare(
       loginDTO.password,
       user.password,
@@ -26,19 +26,10 @@ export class AuthService {
 
     if (passwordMatched) {
       delete user.password;
-      const payload: PayloadType = { email: user.email, userId: user.id };
-      const artist = await this.artistsService.findArtist(user.id);
-      if (artist) {
-        payload.artistId = artist.id;
-      }
-      if (user.enable2FA && user.twoFASecret) {
-        return {
-          validate2FA: 'http://localhost:3000/auth/validate-2fa',
-          message: 'Please send the OTP from your Google Authenticator App',
-        };
-      }
+      const payload: PayloadType = { email: user.email, userId: user._id };
+      const expiresIn = this.configService.get<string>('jwt_ttl');
       return {
-        accessToken: this.jwtService.sign(payload),
+        accessToken: this.jwtService.sign(payload, { expiresIn }),
       };
     } else {
       throw new UnauthorizedException('Password does not match');

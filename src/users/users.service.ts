@@ -1,10 +1,15 @@
 import { Model } from 'mongoose';
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { User, UserDocument } from './schemas/user.schema';
 import { CreateUserDTO } from './dto/create-user.dto';
 import { UpdateUserDTO } from './dto/update-user.dto';
 import * as bcrypt from 'bcrypt';
+import { LoginDTO } from 'src/auth/dto/login.dto';
 
 @Injectable()
 export class UsersService {
@@ -12,24 +17,38 @@ export class UsersService {
 
   // Create a new user with hashed password
   async create(createUserDto: CreateUserDTO): Promise<UserDocument> {
+    const { email } = createUserDto;
+    const userExists = await this.userModel.findOne({ email });
+    if (userExists) {
+      throw new ConflictException('User already exists');
+    }
     const salt = await bcrypt.genSalt();
     const hashedPassword = await bcrypt.hash(createUserDto.password, salt);
 
-    const createdUser = new this.userModel({
+    const newUser = new this.userModel({
       ...createUserDto,
       password: hashedPassword,
     });
 
-    return createdUser.save();
+    const savedUser = await newUser.save();
+
+    // Convert the saved user to a plain object and remove the password
+    const userObject = savedUser.toObject();
+    delete userObject.password;
+
+    return userObject;
   }
 
-  // Find all users
-  async findAll(): Promise<UserDocument[]> {
-    return this.userModel.find().exec();
+  async findOne(data: LoginDTO): Promise<User> {
+    const user = await this.userModel.findOne({ email: data.email });
+    if (!user) {
+      throw new NotFoundException('Could not find user');
+    }
+    return user;
   }
 
   // Find a user by email
-  async findOne(email: string): Promise<UserDocument> {
+  async findByEmail(email: string): Promise<UserDocument> {
     const user = await this.userModel.findOne({ email }).exec();
     if (!user) {
       throw new NotFoundException(`User with email ${email} not found`);
