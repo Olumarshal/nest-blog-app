@@ -23,8 +23,8 @@ export class Blog {
   @Prop({ default: 0 })
   read_count: number;
 
-  @Prop({ required: true })
-  reading_time: string;
+  @Prop()
+  reading_time: number;
 
   @Prop({ required: true })
   tags: string[];

@@ -15,10 +15,22 @@ import { BlogState } from './schemas/blog-state.enum'; // Import the BlogState e
 export class BlogService {
   constructor(@InjectModel(Blog.name) private blogModel: Model<BlogDocument>) {}
 
+  // Utility function to calculate reading time based on word count
+  private calculateReadingTime(text: string): number {
+    const wordsPerMinute = 200; // Average reading speed
+    const wordCount = text.split(' ').length; // Split text by spaces to get word count
+    const readingTime = Math.ceil(wordCount / wordsPerMinute); // Round up to the nearest minute
+    return readingTime;
+  }
+
   async create(createBlogDto: CreateBlogDto, userId: string): Promise<Blog> {
+    // Calculate reading time for the blog content
+    const readingTime = this.calculateReadingTime(createBlogDto.body);
+
     const newBlog = new this.blogModel({
       ...createBlogDto,
       author: userId,
+      reading_time: readingTime,
     });
     return newBlog.save();
   }
