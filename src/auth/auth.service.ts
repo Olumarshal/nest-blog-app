@@ -24,15 +24,14 @@ export class AuthService {
       user.password,
     );
 
-    if (passwordMatched) {
-      delete user.password;
-      const payload: PayloadType = { email: user.email, userId: user._id };
-      const expiresIn = this.configService.get<string>('jwt_ttl');
-      return {
-        accessToken: this.jwtService.sign(payload, { expiresIn }),
-      };
-    } else {
-      throw new UnauthorizedException('Password does not match');
+    if (!passwordMatched) {
+      throw new UnauthorizedException('Invalid credentials');
     }
+
+    const payload: PayloadType = { email: user.email, userId: user._id };
+    const expiresIn = this.configService.get<string>('jwt_ttl');
+
+    const accessToken = this.jwtService.sign(payload, { expiresIn });
+    return { accessToken };
   }
 }

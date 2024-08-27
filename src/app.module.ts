@@ -7,9 +7,17 @@ import { BlogsModule } from './blogs/blogs.module';
 import { UsersModule } from './users/users.module';
 import configuration from './config/configuration';
 import { MongooseModule } from '@nestjs/mongoose';
+import { ThrottlerModule } from '@nestjs/throttler';
+import { APP_GUARD } from '@nestjs/core';
 
 @Module({
   imports: [
+    ThrottlerModule.forRoot([
+      {
+        ttl: 60000,
+        limit: 10,
+      },
+    ]),
     ConfigModule.forRoot({
       load: [configuration],
       cache: true,
@@ -27,6 +35,12 @@ import { MongooseModule } from '@nestjs/mongoose';
     UsersModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerModule,
+    },
+    AppService,
+  ],
 })
 export class AppModule {}

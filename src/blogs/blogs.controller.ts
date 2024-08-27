@@ -20,13 +20,35 @@ import { CreateBlogDto } from './dto/create-blog.dto';
 import { UpdateBlogDto } from './dto/update-blog.dto';
 import { JwtAuthGuard } from 'src/auth/jwt-guard';
 import { BlogState } from './schemas/blog-state.enum';
+import {
+  ApiBearerAuth,
+  ApiOperation,
+  ApiResponse,
+  ApiTags,
+  ApiQuery,
+} from '@nestjs/swagger';
 
 @Controller('api/v1/blogs')
+@ApiTags('blogs')
 export class BlogController {
   constructor(private readonly blogService: BlogService) {}
 
   @Post('create')
   @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({ summary: 'Create a new blog post' })
+  @ApiResponse({
+    status: 201,
+    description: 'The blog post has been successfully created.',
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Invalid data or validation failed.',
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'Unauthorized access.',
+  })
   async create(@Request() req, @Body() createBlogDto: CreateBlogDto) {
     const userId = req.user.userId;
     return this.blogService.create(createBlogDto, userId);
@@ -34,6 +56,37 @@ export class BlogController {
 
   @Get('userblogs')
   @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({
+    summary: 'Get a list of all blogs created by the authenticated user',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Successfully retrieved user blogs.',
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'Unauthorized access.',
+  })
+  @ApiQuery({
+    name: 'state',
+    required: false,
+    description:
+      'The state of the blogs to filter by (e.g., Published, Draft).',
+    enum: BlogState,
+  })
+  @ApiQuery({
+    name: 'page',
+    required: false,
+    description: 'The page number for pagination.',
+    example: 1,
+  })
+  @ApiQuery({
+    name: 'limit',
+    required: false,
+    description: 'The number of blogs to retrieve per page.',
+    example: 10,
+  })
   async getUserBlogs(
     @Request() req,
     @Query('state') state?: BlogState,
@@ -68,6 +121,59 @@ export class BlogController {
   }
 
   @Get('published')
+  @ApiOperation({ summary: 'Get a list of all published blogs' })
+  @ApiResponse({
+    status: 200,
+    description: 'Successfully retrieved published blogs.',
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Invalid query parameters.',
+  })
+  @ApiQuery({
+    name: 'author',
+    required: false,
+    description: 'Filter blogs by author.',
+    example: 'John Doe',
+  })
+  @ApiQuery({
+    name: 'title',
+    required: false,
+    description: 'Filter blogs by title.',
+    example: 'My First Blog',
+  })
+  @ApiQuery({
+    name: 'tags',
+    required: false,
+    description:
+      'Filter blogs by tags. Multiple tags can be separated by commas.',
+    example: 'tech,science',
+  })
+  @ApiQuery({
+    name: 'sortBy',
+    required: false,
+    description: 'Field to sort the blogs by.',
+    example: 'createdAt',
+  })
+  @ApiQuery({
+    name: 'order',
+    required: false,
+    description:
+      'Sort order, either "asc" for ascending or "desc" for descending.',
+    example: 'desc',
+  })
+  @ApiQuery({
+    name: 'page',
+    required: false,
+    description: 'The page number for pagination.',
+    example: 1,
+  })
+  @ApiQuery({
+    name: 'limit',
+    required: false,
+    description: 'The number of blogs to retrieve per page.',
+    example: 20,
+  })
   async getPublishedBlogs(
     @Query('author') author?: string,
     @Query('title') title?: string,
@@ -99,8 +205,17 @@ export class BlogController {
       };
     }
   }
-  // Add proper status codes
+
   @Get('published/:id')
+  @ApiOperation({ summary: 'Get a published blog by its ID' })
+  @ApiResponse({
+    status: 200,
+    description: 'Successfully retrieved the published blog.',
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Blog not found or not published.',
+  })
   async getPublishedBlogById(@Param('id') id: string) {
     try {
       const blog = await this.blogService.findById(id);
@@ -124,6 +239,24 @@ export class BlogController {
 
   @Patch(':id/publish')
   @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({ summary: 'Publish a blog post' })
+  @ApiResponse({
+    status: 200,
+    description: 'The blog post has been successfully published.',
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Blog not found.',
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'Unauthorized access or not the blog owner.',
+  })
+  @ApiResponse({
+    status: 500,
+    description: 'Internal server error.',
+  })
   async publishBlog(@Param('id') id: string, @Request() req) {
     const userId = req.user.userId;
     try {
@@ -150,6 +283,24 @@ export class BlogController {
 
   @Patch(':id')
   @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({ summary: 'Update an existing blog post' })
+  @ApiResponse({
+    status: 200,
+    description: 'The blog post has been successfully updated.',
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Blog not found.',
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Invalid update data or validation failed.',
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'Unauthorized access.',
+  })
   async update(
     @Param('id') id: string,
     @Request() req,
@@ -171,6 +322,24 @@ export class BlogController {
 
   @Delete(':id')
   @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({ summary: 'Delete a blog post' })
+  @ApiResponse({
+    status: 200,
+    description: 'The blog post has been successfully deleted.',
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Blog not found.',
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'Unauthorized access.',
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Failed to delete blog due to bad request.',
+  })
   async delete(@Param('id') id: string) {
     try {
       await this.blogService.delete(id);

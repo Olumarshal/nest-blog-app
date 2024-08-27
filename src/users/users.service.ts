@@ -1,5 +1,6 @@
 import { Model } from 'mongoose';
 import {
+  BadRequestException,
   ConflictException,
   Injectable,
   NotFoundException,
@@ -30,13 +31,17 @@ export class UsersService {
       password: hashedPassword,
     });
 
-    const savedUser = await newUser.save();
+    try {
+      const savedUser = await newUser.save();
 
-    // Convert the saved user to a plain object and remove the password
-    const userObject = savedUser.toObject();
-    delete userObject.password;
+      // Convert the saved user to a plain object and remove the password
+      const userObject = savedUser.toObject();
+      delete userObject.password;
 
-    return userObject;
+      return userObject;
+    } catch (error) {
+      throw new BadRequestException('User creation failed');
+    }
   }
 
   async findOne(data: LoginDTO): Promise<User> {
@@ -79,6 +84,11 @@ export class UsersService {
 
     Object.assign(existingUser, updateUserDto);
 
-    return existingUser.save();
+    try {
+      const updatedUser = await existingUser.save();
+      return updatedUser;
+    } catch (error) {
+      throw new BadRequestException('User update failed');
+    }
   }
 }
